@@ -1,0 +1,112 @@
+<!-- vim: syntax=markdown -->
+
+# Day 04
+
+```elixir
+# Note: when making the next template, something like this works well:
+#   `cat day04.livemd | sed 's/33/04/' > day04.livemd`
+# When inspecting lists of numbers, use "charlists: :as_lists"
+#
+Mix.install([
+  # Join the string so a copy of dayN to dayM doesn't destroy it.
+  {:kino, "~> 0.1" <> "4.2"}
+])
+
+# Join the string so a copy of dayN to dayM doesn't destroy it.
+IEx.Helpers.c("/Users/johnb/dev/2" <> "0" <> "1" <> "7adventOfCode/advent_of_code.ex")
+alias AdventOfCode, as: AOC
+alias Kino.Input
+```
+
+## Installation and Data
+
+```elixir
+input_example = Kino.Input.textarea("Example Data", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_puzzleInput = Kino.Input.textarea("Puzzle Input", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_source_select =
+  Kino.Input.select("Source", [{:example, "example"}, {:puzzle_input, "puzzle input"}])
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+data = fn ->
+  (Kino.Input.read(input_source_select) == :example &&
+     Kino.Input.read(input_example)) ||
+    Kino.Input.read(input_puzzleInput)
+end
+```
+
+## Solution
+
+```elixir
+defmodule Day04 do
+  def is_valid?(line) do
+    line
+    |> AOC.delimited_by_spaces()
+    |> Enum.reduce_while(%{}, fn word, map ->
+      if is_nil(map[word]) do
+        {:cont, Map.put(map, word, true)}
+      else
+        {:halt, false}
+      end
+    end)
+    |> is_map()
+  end
+  
+  def solve1(text) do
+    text
+    |> AOC.as_single_lines()
+    |> Enum.reduce(0, fn line, acc ->
+      acc + (is_valid?(line) && 1 || 0)
+    end)
+  end
+
+  def is_extra_valid?(line) do
+    line
+    |> AOC.delimited_by_spaces()
+    |> Enum.reduce_while(%{}, fn word, map ->
+      sorted = String.split(word, "") |> Enum.sort() |> Enum.join()
+      if is_nil(map[sorted]) do
+        {:cont, Map.put(map, sorted, true)}
+      else
+        {:halt, false}
+      end
+    end)
+    |> is_map()
+  end
+  
+  def solve2(text) do
+    text
+    |> AOC.as_single_lines()
+    |> Enum.reduce(0, fn line, acc ->
+      acc + (is_extra_valid?(line) && 1 || 0)
+    end)
+  end
+
+end
+
+# Example:
+
+IO.inspect(Time.utc_now())
+data.()
+|> Day04.solve1()
+|> IO.inspect(label: "\n*** Part 1 solution (example: 2)")
+# 451
+
+data.()
+|> Day04.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# 223
+
+```

@@ -51,8 +51,27 @@ end
 
 ```elixir
 defmodule Day03 do
+  # The puzzle describes a point on a spiral and asks for the Manhattan distance.
+  # The spiral has an 8-fold symmetry of wedges of digits. If named for their starting
+  # digit (with 1 in the center), they'd be wedge2 thru wedge9 (see diagram at.https://adventofcode.com/2017/day/3).
+  # Each wedge will have `(n * (n + 1)) / 2` numbers
   def solve1(text) do
-    text
+    target = String.to_integer(text)
+    full_iterations = div(target - 1, 8)
+    as_bits = Integer.to_string(target, 2)
+    bit_length = String.length(as_bits)
+    IO.inspect([target, as_bits, bit_length], label: "\ntarget")
+
+    root = :math.sqrt(target)
+    lower = Float.floor(root)
+    upper = Float.ceil(root)
+    ring = Float.floor((root - 1) / 2)
+    delta = rem(target - lower * upper, ring)
+    IO.inspect([lower, upper, lower * upper, target, target - lower * upper, ring, delta])
+
+    IO.inspect(ring, label: "ring")
+    distance = ring * 2 # Float.round((lower * upper / 4) - (target - lower * upper))
+    IO.inspect(distance, label: "distance")
   end
 
   # def solve2(text) do
@@ -62,10 +81,17 @@ end
 # Example:
 
 IO.inspect(Time.utc_now())
+Day03.solve1("1")
+Day03.solve1("12")
+Day03.solve1("23")
+Day03.solve1("1024")
+
 data.()
 |> Day03.solve1()
-|> IO.inspect(label: "\n*** Part 1 solution (example: )")
-#
+|> IO.inspect(label: "\n*** Part 1 solution (example: 31)")
+# 379 (256+123) was too low
+# 389 (512-123) is still too low
+# 441 is too high
 
 # data.()
 # |> Day03.solve2()
