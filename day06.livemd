@@ -1,0 +1,133 @@
+<!-- vim: syntax=markdown -->
+
+# Day 06
+
+```elixir
+# Note: when making the next template, something like this works well:
+#   `cat day06.livemd | sed 's/33/04/' > day04.livemd`
+# When inspecting lists of numbers, use "charlists: :as_lists"
+#
+Mix.install([
+  # Join the string so a copy of dayN to dayM doesn't destroy it.
+  {:kino, "~> 0.1" <> "4.2"}
+])
+
+# Join the string so a copy of dayN to dayM doesn't destroy it.
+IEx.Helpers.c("/Users/johnb/dev/2" <> "0" <> "1" <> "7adventOfCode/advent_of_code.ex")
+alias AdventOfCode, as: AOC
+alias Kino.Input
+```
+
+## Installation and Data
+
+```elixir
+input_example = Kino.Input.textarea("Example Data", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_puzzleInput = Kino.Input.textarea("Puzzle Input", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_source_select =
+  Kino.Input.select("Source", [{:example, "example"}, {:puzzle_input, "puzzle input"}])
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+data = fn ->
+  (Kino.Input.read(input_source_select) == :example &&
+     Kino.Input.read(input_example)) ||
+    Kino.Input.read(input_puzzleInput)
+end
+```
+
+## Solution
+
+```elixir
+defmodule Day06 do
+  def banks_to_string(banks) do
+    (0..(Enum.count(banks) - 1))
+    |> Enum.map(fn index -> banks[index] end)
+    |> Enum.join(",")
+  end
+
+  def choose_first_biggest(banks) do
+    max = Map.values(banks) |> Enum.max()
+    location = (0..Enum.count(banks))
+      |> Enum.find(fn index -> banks[index] == max end)
+
+    {max, location}
+  end
+
+  def indexes_after(current, bank_count) do
+    (1..bank_count)
+    |> Enum.map(fn index -> rem(index + current, bank_count) end)
+  end
+
+  def redistribute(banks, bank, index) do
+    bank_count = Enum.count(banks)
+    common = div(bank, bank_count)
+    accumulator = %{banks: Map.put(banks, index, 0), dribble: rem(bank, bank_count)}
+    
+    indexes_after(index, bank_count)
+    |> Enum.reduce(accumulator, fn ind, acc ->
+      # IO.inspect(acc, label: "???")
+      additional = (acc.dribble > 0) && (common + 1) || common
+      {_, bank2} = get_and_update_in(acc.banks, [ind], fn orig -> {orig, orig + additional} end)
+      
+      %{ banks: bank2, dribble: acc.dribble - 1}
+    end)
+    |> Map.get(:banks)
+    # |> IO.inspect(label: "socialism")
+  end
+  
+  def solve1(text) do
+    banks = text
+      |> AOC.delimited_by_spaces()
+      |> Enum.map(&String.to_integer/1)
+      |> IO.inspect()
+      |> Enum.with_index()
+      |> IO.inspect()
+      |> Enum.reduce(%{}, fn {value, index}, acc -> Map.put(acc, index, value) end)
+      |> IO.inspect()
+
+    infinite_stream = Stream.iterate(1, &(&1 + 1))
+    accumulator = %{banks: banks, history: %{banks_to_string(banks) => 0}}
+    Enum.reduce_while(infinite_stream, accumulator, fn cycle, acc ->
+      IO.inspect(acc, label: "cycle #{cycle}")
+      {bank, index} = choose_first_biggest(acc.banks)
+      banks = redistribute(acc.banks, bank, index)
+      banksy = banks_to_string(banks)
+      # AOC.inspect([bank, index, banksy, banks])
+      if !is_nil(acc.history[banksy]) do
+        {:halt, {cycle, acc.history[banksy], cycle - acc.history[banksy]}}
+      else
+        {:cont, %{banks: banks, history: Map.put(acc.history, banksy, cycle)}}
+      end
+    end)
+  end
+
+  # def solve2(text) do
+  # end
+end
+
+# Example:
+
+IO.inspect(Time.utc_now())
+data.()
+|> Day06.solve1()
+|> IO.inspect(label: "\n*** Part 1 solution (example: 5)")
+#
+
+# data.()
+# |> Day06.solve2()
+# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# {14029, 11264, 2765}
+
+```

@@ -1,0 +1,146 @@
+<!-- vim: syntax=markdown -->
+
+# Day 07
+
+```elixir
+# Note: when making the next template, something like this works well:
+#   `cat day07.livemd | sed 's/33/04/' > day04.livemd`
+# When inspecting lists of numbers, use "charlists: :as_lists"
+#
+Mix.install([
+  # Join the string so a copy of dayN to dayM doesn't destroy it.
+  {:kino, "~> 0.1" <> "4.2"}
+])
+
+# Join the string so a copy of dayN to dayM doesn't destroy it.
+IEx.Helpers.c("/Users/johnb/dev/2" <> "0" <> "1" <> "7adventOfCode/advent_of_code.ex")
+alias AdventOfCode, as: AOC
+alias Kino.Input
+```
+
+## Installation and Data
+
+```elixir
+input_example = Kino.Input.textarea("Example Data", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_puzzleInput = Kino.Input.textarea("Puzzle Input", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_source_select =
+  Kino.Input.select("Source", [{:example, "example"}, {:puzzle_input, "puzzle input"}])
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+data = fn ->
+  (Kino.Input.read(input_source_select) == :example &&
+     Kino.Input.read(input_example)) ||
+    Kino.Input.read(input_puzzleInput)
+end
+```
+
+## Solution
+
+```elixir
+defmodule Day07 do
+  @parent_line ~r/(.+) \((\d+)\) -> (.*)/
+  @loose_line ~r/(.+) \((\d+)\)/
+  
+  def parse_circuits(text) do
+    accumulator = %{weights: %{}, parents: %{}}
+    
+    text
+    |> AOC.as_single_lines()
+    |> Enum.reduce(accumulator, fn line, acc ->
+      # AOC.inspect([line, acc])
+      if Regex.match?(@parent_line, line) do
+        [_, name, weight, dependents] = Regex.run(@parent_line, line)
+        acc
+        |> put_in([:weights, name], String.to_integer(weight))
+        |> put_in([:parents, name], String.split(dependents, ", "))
+      else
+        [_, name, weight] = Regex.run(@loose_line, line)
+        acc
+        |> put_in([:weights, name], String.to_integer(weight))
+      end
+    end)
+  end
+
+  def solve1(text) do
+    %{weights: _weights, parents: parents} = parse_circuits(text)
+    kids = Map.values(parents) |> List.flatten() |> MapSet.new()
+    Map.keys(parents) |> MapSet.new() |> MapSet.difference(kids)
+  end
+
+  def tree_weight(parent, parents, weights) do
+    if is_nil(parents[parent]) do
+      weights[parent]
+    else
+      child_weighting = parents[parent] 
+        |> Enum.map(fn child -> tree_weight(child, parents, weights) end)
+        |> Enum.sum()
+      child_weighting + weights[parent]
+    end
+  end
+
+  def show_subtree(parent, parents, weights) do
+    if is_nil(parents[parent]) do
+      AOC.inspect(weights[parent], label: parent)
+    else
+      child_weights = Enum.map(parents[parent], fn x -> tree_weight(x, parents, weights) end)
+      AOC.inspect([weights[parent], "+", parents[parent], child_weights], label: parent)
+    end
+  end
+
+  def balanced?(parent, parents, weights) do
+    if is_nil(parents[parent]) do
+      true
+    else
+      subtree_weights = Enum.map(parents[parent], fn child -> 
+        tree_weight(child, parents, weights) 
+      end)
+      # |> AOC.inspect(label: parent)
+
+      distinct_weights = Enum.uniq(subtree_weights)
+      
+      result = (Enum.count(distinct_weights) == 1)
+      if !result do 
+        show_subtree(parent, parents, weights)
+        AOC.inspect([subtree_weights, parents[parent]], label: parent) 
+      end
+      result
+    end
+  end
+
+  def solve2(text) do
+    %{weights: weights, parents: parents} = parse_circuits(text)
+
+    Map.keys(parents) |> Enum.each(fn parent -> balanced?(parent, parents, weights) end)
+
+    show_subtree("gozhrsf", parents, weights)
+  end
+end
+
+# Example:
+
+IO.inspect(Time.utc_now())
+data.()
+|> Day07.solve1()
+|> IO.inspect(label: "\n*** Part 1 solution (example: tknk)")
+# eqgvf
+
+data.()
+|> Day07.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# 1381 is too high???
+# 757 for gozhrsf (instead of 762)
+
+```

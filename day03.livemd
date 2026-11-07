@@ -57,45 +57,116 @@ defmodule Day03 do
   # Each wedge will have `(n * (n + 1)) / 2` numbers
   def solve1(text) do
     target = String.to_integer(text)
-    full_iterations = div(target - 1, 8)
-    as_bits = Integer.to_string(target, 2)
-    bit_length = String.length(as_bits)
-    IO.inspect([target, as_bits, bit_length], label: "\ntarget")
+    IO.inspect(target, label: "target")
 
-    root = :math.sqrt(target)
-    lower = Float.floor(root)
-    upper = Float.ceil(root)
-    ring = Float.floor((root - 1) / 2)
-    delta = rem(target - lower * upper, ring)
-    IO.inspect([lower, upper, lower * upper, target, target - lower * upper, ring, delta])
+    # hard-code the first two cells to kick-start the process
+    accumulator = %{grid: %{{0,0} => 1, {1,0} => 1}, x: 1, y: 0}
+    
+    grid = Enum.reduce(3..target, accumulator, fn cell, acc ->
+      # IO.inspect(acc)
+      
+      left = !is_nil(acc.grid[{acc.x - 1, acc.y}])
+      right = !is_nil(acc.grid[{acc.x + 1, acc.y}])
+      above = !is_nil(acc.grid[{acc.x, acc.y + 1}])
+      below = !is_nil(acc.grid[{acc.x, acc.y - 1}])
 
-    IO.inspect(ring, label: "ring")
-    distance = ring * 2 # Float.round((lower * upper / 4) - (target - lower * upper))
-    IO.inspect(distance, label: "distance")
+      case [left, right, above, below] do
+        [true, _, true, _] -> 
+          %{grid: put_in(acc.grid, [{acc.x + 1, acc.y}], cell), x: acc.x + 1, y: acc.y}
+        [true, _, _, _] -> 
+          %{grid: put_in(acc.grid, [{acc.x, acc.y + 1}], cell), x: acc.x, y: acc.y + 1}
+        [_, true, _, true] -> 
+          %{grid: put_in(acc.grid, [{acc.x - 1, acc.y}], cell), x: acc.x - 1, y: acc.y}
+        [_, true, _, _] -> 
+          %{grid: put_in(acc.grid, [{acc.x, acc.y - 1}], cell), x: acc.x, y: acc.y - 1}
+        [_, _, true, _] -> 
+          %{grid: put_in(acc.grid, [{acc.x + 1, acc.y}], cell), x: acc.x + 1, y: acc.y}
+        [_, _, _, true] -> 
+          %{grid: put_in(acc.grid, [{acc.x - 1, acc.y}], cell), x: acc.x - 1, y: acc.y}
+      end
+    end)
+    # IO.inspect([grid, grid.x, grid.y, abs(grid.x) + abs(grid.y)])
+    {{x, y}, _target} = Enum.find(grid.grid, fn {_key, val} -> val == target end)
+    abs(x) + abs(y)
   end
 
-  # def solve2(text) do
-  # end
+  def sum_neighbors(grid, x, y) do
+    # IO.inspect([x, y, " neighbors:",
+    #   Map.get(grid, {x + 1, y}) ,
+    #   Map.get(grid, {x + 1, y + 1}) ,
+    #   Map.get(grid, {x, y + 1}) ,
+    #   Map.get(grid, {x - 1, y + 1}) ,
+    #   Map.get(grid, {x - 1, y}),
+    #   Map.get(grid, {x - 1, y - 1}) ,
+    #   Map.get(grid, {x, y - 1}),
+    #   Map.get(grid, {x + 1, y - 1})
+    # ])
+    Map.get(grid, {x + 1, y}, 0) +
+    Map.get(grid, {x + 1, y + 1}, 0) +
+    Map.get(grid, {x, y + 1}, 0) +
+    Map.get(grid, {x - 1, y + 1}, 0) +
+    Map.get(grid, {x - 1, y}, 0) +
+    Map.get(grid, {x - 1, y - 1}, 0) +
+    Map.get(grid, {x, y - 1}, 0) +
+    Map.get(grid, {x + 1, y - 1}, 0)
+  end
+
+  def solve2(text) do
+    target = String.to_integer(text)
+    IO.inspect(target, label: "target")
+
+    # hard-code the first two cells to kick-start the process
+    accumulator = %{grid: %{{0,0} => 1, {1,0} => 1}, x: 1, y: 1}
+    
+    grid = Enum.reduce_while(3..target, accumulator, fn cell, acc ->
+      # IO.inspect(acc, label: "acc")
+      sum_of_neighbors = sum_neighbors(acc.grid, acc.x, acc.y) #|> IO.inspect(label: "sum_of_neighbors")
+      if sum_of_neighbors > target do
+        IO.inspect(sum_of_neighbors, label: "neighborly sum for cell #{cell}")
+      end
+      
+      left = !is_nil(acc.grid[{acc.x - 1, acc.y}])
+      right = !is_nil(acc.grid[{acc.x + 1, acc.y}])
+      above = !is_nil(acc.grid[{acc.x, acc.y + 1}])
+      below = !is_nil(acc.grid[{acc.x, acc.y - 1}])
+      center = {acc.x, acc.y}
+
+      update = case [left, right, above, below] do
+        [true, _, true, _] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x + 1, y: acc.y}
+        [true, _, _, _] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x, y: acc.y + 1}
+        [_, true, _, true] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x - 1, y: acc.y}
+        [_, true, _, _] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x, y: acc.y - 1}
+        [_, _, true, _] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x + 1, y: acc.y}
+        [_, _, _, true] -> 
+          %{grid: put_in(acc.grid, [center], sum_of_neighbors), x: acc.x - 1, y: acc.y}
+      end
+  
+      if sum_of_neighbors > target do
+        {:halt, sum_of_neighbors }
+      else
+        {:cont, update}
+      end
+    end)
+  end
 end
 
 # Example:
 
 IO.inspect(Time.utc_now())
-Day03.solve1("1")
-Day03.solve1("12")
-Day03.solve1("23")
-Day03.solve1("1024")
 
 data.()
 |> Day03.solve1()
 |> IO.inspect(label: "\n*** Part 1 solution (example: 31)")
-# 379 (256+123) was too low
-# 389 (512-123) is still too low
-# 441 is too high
+# 438
 
-# data.()
-# |> Day03.solve2()
-# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
+data.()
+|> Day03.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: )")
 # 
 
 ```

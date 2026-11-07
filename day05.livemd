@@ -51,12 +51,53 @@ end
 
 ```elixir
 defmodule Day05 do
-  def solve1(text) do
+  def load_program(text) do
     text
+    |> AOC.as_integers()
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {jump, index}, acc ->
+      Map.put(acc, index, jump)
+    end)
+  end
+  
+  def solve1(text) do
+    program = load_program(text)
+
+    infinite_stream = Stream.repeatedly(fn -> :value end)
+    Enum.reduce_while(infinite_stream, %{ip: 0, step: 1, prog: program}, fn _, acc ->
+      # IO.inspect(acc)
+      next_ip = acc.ip + acc.prog[acc.ip]
+      if is_nil(acc.prog[next_ip]) do
+        {:halt, acc.step}
+      else
+        {_original, new_prog} = get_and_update_in(acc.prog, [acc.ip], &{&1, &1 + 1})
+        {:cont, %{ip: next_ip, step: acc.step + 1, prog: new_prog}}
+      end
+    end)
   end
 
-  # def solve2(text) do
-  # end
+  def solve2(text) do
+    program = load_program(text)
+
+    infinite_stream = Stream.repeatedly(fn -> :value end)
+    Enum.reduce_while(infinite_stream, %{ip: 0, step: 1, prog: program}, fn _, acc ->
+      # IO.inspect(acc)
+      offset = acc.prog[acc.ip]
+      next_ip = acc.ip + offset
+      if is_nil(acc.prog[next_ip]) do
+        {:halt, acc.step}
+      else
+        {_original, new_prog} = get_and_update_in(acc.prog, [acc.ip], fn original ->
+          if original >= 3 do
+            {original, original - 1}
+          else
+            {original, original + 1}
+          end
+        end)
+        {:cont, %{ip: next_ip, step: acc.step + 1, prog: new_prog}}
+      end
+    end)
+  end
 end
 
 # Example:
@@ -64,12 +105,12 @@ end
 IO.inspect(Time.utc_now())
 data.()
 |> Day05.solve1()
-|> IO.inspect(label: "\n*** Part 1 solution (example: )")
-#
+|> IO.inspect(label: "\n*** Part 1 solution (example: 5)")
+# 394829
 
-# data.()
-# |> Day05.solve2()
-# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
-# 
+data.()
+|> Day05.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: 10)")
+# 31150702
 
 ```
