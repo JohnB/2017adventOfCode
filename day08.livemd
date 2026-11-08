@@ -51,12 +51,72 @@ end
 
 ```elixir
 defmodule Day08 do
-  def solve1(text) do
+  @program_line ~r/(.+) (inc|dec) (-?\d+) if (.*) (.+) (-?\d+)/
+  def load_program(text) do
     text
+    |> AOC.as_single_lines()
+    |> Enum.map(fn line ->
+      [_, dest, action, delta, test_reg, op, test_value] = Regex.run(@program_line, line)
+      delta = (action == "inc") && String.to_integer(delta) || -String.to_integer(delta)
+      test_value = String.to_integer(test_value)
+      %{dest: dest, delta: delta, test_reg: test_reg, op: op, test_value: test_value}
+    end)
   end
 
-  # def solve2(text) do
-  # end
+  def zero_registers(program) do
+    Enum.reduce(program, %{}, fn %{dest: dest, test_reg: test_reg}, acc ->
+      acc
+      |> Map.put_new(dest, 0)
+      |> Map.put_new(test_reg, 0)
+    end)
+  end
+
+  def ok?(instruction, registers) do
+    test_value = registers[instruction.test_reg]
+    case instruction.op do
+      "<" -> test_value < instruction.test_value
+      ">" -> test_value > instruction.test_value
+      "<=" -> test_value <= instruction.test_value
+      ">=" -> test_value >= instruction.test_value
+      "==" -> test_value == instruction.test_value
+      "!=" -> test_value != instruction.test_value
+    end
+  end
+
+  def solve1(text) do
+    program = load_program(text) |> IO.inspect()
+    registers = zero_registers(program) |> IO.inspect()
+
+    Enum.reduce(program, registers, fn instruction, acc ->
+      if ok?(instruction, acc) do
+        get_and_update_in(acc, [instruction.dest], fn now -> {now, now + instruction.delta} end)
+        |> elem(1)
+      else
+        acc
+      end
+    end)
+    |> IO.inspect()
+    |> Map.values()
+    |> Enum.max()
+  end
+
+  def solve2(text) do
+    program = load_program(text) |> IO.inspect()
+    registers = zero_registers(program) |> IO.inspect()
+
+    Enum.reduce(program, {registers, 0}, fn instruction, {regs, max} ->
+      updated = if ok?(instruction, regs) do
+        get_and_update_in(regs, [instruction.dest], fn now -> {now, now + instruction.delta} end)
+        |> elem(1)
+      else
+        regs
+      end
+      {updated, Enum.max(Map.values(updated) ++ [max])}
+      |> IO.inspect()
+    end)
+    |> IO.inspect(label: "out of loop")
+    |> elem(1)
+  end
 end
 
 # Example:
@@ -64,12 +124,12 @@ end
 IO.inspect(Time.utc_now())
 data.()
 |> Day08.solve1()
-|> IO.inspect(label: "\n*** Part 1 solution (example: )")
-#
+|> IO.inspect(label: "\n*** Part 1 solution (example: 1)")
+# 6061
 
-# data.()
-# |> Day08.solve2()
-# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
-# 
+data.()
+|> Day08.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# 6696
 
 ```
