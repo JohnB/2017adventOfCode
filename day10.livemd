@@ -1,0 +1,110 @@
+<!-- vim: syntax=markdown -->
+
+# Day 10
+
+```elixir
+# Note: when making the next template, something like this works well:
+#   `cat day10.livemd | sed 's/33/04/' > day04.livemd`
+# When inspecting lists of numbers, use "charlists: :as_lists"
+#
+Mix.install([
+  # Join the string so a copy of dayN to dayM doesn't destroy it.
+  {:kino, "~> 0.1" <> "4.2"}
+])
+
+# Join the string so a copy of dayN to dayM doesn't destroy it.
+IEx.Helpers.c("/Users/johnb/dev/2" <> "0" <> "1" <> "7adventOfCode/advent_of_code.ex")
+alias AdventOfCode, as: AOC
+alias Kino.Input
+```
+
+## Installation and Data
+
+```elixir
+input_example = Kino.Input.textarea("Example Data", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_puzzleInput = Kino.Input.textarea("Puzzle Input", monospace: true)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input_source_select =
+  Kino.Input.select("Source", [{:example, "example"}, {:puzzle_input, "puzzle input"}])
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+data = fn ->
+  (Kino.Input.read(input_source_select) == :example &&
+     Kino.Input.read(input_example)) ||
+    Kino.Input.read(input_puzzleInput)
+end
+```
+
+## Solution
+
+```elixir
+defmodule Day10 do
+  def reverse(%{list: list, pos: pos, skip: skip}, len) do
+    list_len = Enum.count(list)
+    num_swaps = floor(len / 2)
+    IO.inspect([list, num_swaps], label: "start")
+    updated = Enum.reduce(0..num_swaps, list, fn index, acc ->
+      near_end = rem(pos + index, list_len)
+      far_end = rem(pos + len - index - 1, list_len)
+      near_value = list[near_end]
+
+      acc
+      |> Map.put(near_end, list[far_end])
+      |> Map.put(far_end, near_value)
+    end)
+    |> IO.inspect()
+
+    %{list: updated, pos: rem(pos + len + skip, list_len), skip: skip + 1}
+  end
+  
+  def solve1(text) do
+    lengths = AOC.as_comma_separated_integers(text)
+    # our circular list will go 0..list_end
+    # this just sizes correctly for test vs prod
+    list_end = (Enum.count(lengths) == 4) && 4 || 255
+
+    # make list
+    list = (0..list_end)
+      |> Enum.reduce(%{}, fn entry, acc ->
+        Map.put(acc, entry, entry)
+      end)
+    accumulator = %{list: list, pos: 0, skip: 0}
+
+    # apply process
+    %{list: list2} = Enum.reduce(lengths, accumulator, fn len, acc ->
+      reverse(acc, len)
+    end)
+
+    list2[0] * list2[1]
+  end
+
+  # def solve2(text) do
+  # end
+end
+
+# Example:
+
+IO.inspect(Time.utc_now())
+data.()
+|> Day10.solve1()
+|> IO.inspect(label: "\n*** Part 1 solution (example: 12)")
+#
+
+# data.()
+# |> Day10.solve2()
+# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# 
+
+```
