@@ -51,13 +51,61 @@ end
 
 ```elixir
 defmodule Day09 do
+  def remove_garbage(line) do
+    line
+    |> AOC.inspect()
+    |> String.replace(~r/<(.*?!.)+?.*?>/, "")
+    |> AOC.inspect()
+    |> String.replace(~r/<.*?>/, "")
+    |> AOC.inspect()
+  end
+  
+  def count_groups(line) do
+    accumulator = %{score: 0, delta: 1, in_garbage: false, ignore_next: false, gigo: 0}
+    line
+    |> String.graphemes()
+    |> Enum.reduce(accumulator, fn char, acc ->
+      # IO.inspect([char, acc])
+      case {char, acc.in_garbage, acc.ignore_next} do
+        {_a, _b, true} ->
+          Map.put(acc, :ignore_next, false)
+        {"<", false, _} -> 
+          Map.put(acc, :in_garbage, true)
+        {"!", true, _} -> 
+          Map.put(acc, :ignore_next, true)
+        {">", true, _} -> 
+          Map.put(acc, :in_garbage, false)
+        {_a, true, _b} ->
+          Map.put(acc, :gigo, acc.gigo + 1)
+        {"{", _a, _b} -> 
+          acc
+          |> Map.put(:score, acc.score + acc.delta)
+          |> Map.put(:delta, acc.delta + 1)
+        {"}", _a, _b} -> 
+          acc
+          |> Map.put(:delta, acc.delta - 1)
+        {",", _a, _b} -> 
+          acc
+        _ -> 
+          acc
+      end
+      # |> IO.inspect(label: "end loop")
+    end)
+    # |> Map.get(:score)
+  end
+  # def count_groups("", _min_count), do: 0
+  
   def solve1(text) do
     text
     |> AOC.as_single_lines()
+    |> Enum.map(fn line ->
+      line
+      # |> AOC.inspect(label: "\nline")
+      # |> remove_garbage()
+      |> count_groups()
+      # |> IO.inspect()
+    end)
   end
-
-  # def solve2(text) do
-  # end
 end
 
 # Example:
@@ -66,11 +114,7 @@ IO.inspect(Time.utc_now())
 data.()
 |> Day09.solve1()
 |> IO.inspect(label: "\n*** Part 1 solution (example: )")
-#
-
-# data.()
-# |> Day09.solve2()
-# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
-# 
+# part 1: 7616
+# part 2: 3838
 
 ```
