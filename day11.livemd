@@ -65,33 +65,70 @@ defmodule Day11 do
   #   / s  \
   #
     
-  @grid_width 50_000
-  @center_x 0 # div(@grid_width, 2)
-  @center_y 0 # div(@grid_width, 2)
+  # @grid_width 50_000
+  # @center_x 0 # div(@grid_width, 2)
+  # @center_y 0 # div(@grid_width, 2)
+
+  # Reduce "se,sw" to "s"
+  def funnel(map, wrong1, wrong2, right) do
+    num_incorrect = min(map[wrong1], map[wrong2])
+    map
+    |> Map.update!(wrong1, &(&1 - num_incorrect))
+    |> Map.update!(right, &(&1 + num_incorrect))
+    |> Map.update!(wrong2, &(&1 - num_incorrect))
+  end
+
+  # Reduce "se,n" to "ne"
+  def normalize(map, wrong, right, direct) do
+    num_incorrect = min(map[wrong], map[direct])
+    map
+    |> Map.update!(wrong, &(&1 - num_incorrect))
+    |> Map.update!(right, &(&1 + num_incorrect))
+    |> Map.update!(direct, &(&1 - num_incorrect))
+  end
+
+  # Reduce one of the directions to zero
+  def normalize(map, a, b) do
+    if map[a] > map[b] do
+      map
+      |> Map.put(a, map[a] - map[b])
+      |> Map.put(b, 0)
+    else
+      map
+      |> Map.put(b, map[b] - map[a])
+      |> Map.put(a, 0)
+    end
+    |> IO.inspect(label: "normalized #{a} and #{b}")
+  end
   
   def solve1(text, expected \\ nil) do
-    accumulator = %{x: @center_x, y: @center_y}
-    |> IO.inspect(label: "start")
-    
-    result = text
-      |> String.split(",")
-      |> Enum.reduce(accumulator, fn dir, acc ->
-        case dir do
-          "n" -> %{x: acc.x, y: acc.y - @grid_width} 
-          "ne" -> %{x: acc.x + 1, y: acc.y - @grid_width} 
-          "nw" -> %{x: acc.x - 1, y: acc.y} 
-          "se" -> %{x: acc.x + 1, y: acc.y} 
-          "sw" -> %{x: acc.x - 1, y: acc.y + @grid_width} 
-          "s" -> %{x: acc.x, y: acc.y + @grid_width} 
-        end
-        # |> IO.inspect(label: dir)
-      end)
-      |> IO.inspect(label: "result")
+    moves = String.split(text, ",", trim: true)
+    cardinals = ["se", "n", "sw", "ne", "nw", "s"]
+    histogram = Enum.reduce(cardinals, %{}, fn dir, acc ->
+      count = moves
+        |> Enum.filter(fn x -> x == dir end)
+        |> Enum.count()
 
-    {_, result} = get_and_update_in(result, [:y], fn y -> {y, div(y, @grid_width) - 1} end)
-    {_, result} = get_and_update_in(result, [:x], fn x -> {x, abs(x - @center_x)} end)
-    
-    IO.inspect([result, result.x + result.y, expected, text], label: "normalized Y result")
+      Map.put(acc, dir, count)
+    end)
+    |> AOC.inspect(label: "\ninitial histogram")
+
+    updated =  normalize(histogram, "nw", "se")
+      |> normalize("ne", "sw")
+      |> normalize("n", "s")
+      |> funnel("nw", "ne", "n")
+      |> funnel("sw", "se", "s")
+      |> normalize("se", "ne", "n")
+      |> normalize("sw", "nw", "n")
+      |> normalize("ne", "se", "s")
+      |> normalize("nw", "sw", "s")
+      |> normalize("ne", "s", "se")
+      |> normalize("nw", "s", "sw")
+      |> normalize("se", "n", "ne")
+      |> normalize("sw", "n", "nw")
+
+    result = Map.values(updated) |> Enum.sum()
+    IO.inspect([expected, result, text, updated], label: "expected result")
   end
 
   # def solve2(text) do
@@ -104,13 +141,12 @@ IO.inspect(Time.utc_now())
 data.()
 |> Day11.solve1()
 |> IO.inspect(label: "\n*** Part 1 solution (example: 3)")
-# 1261 is too high, as is 1260
-# 1223 "that isn't right - go see reddit"
+# 824
 
-Day11.solve1("ne,ne,ne", 3)
-Day11.solve1("ne,ne,sw,sw", 0)
-Day11.solve1("ne,ne,s,s", 2)
-Day11.solve1("se,sw,se,sw,sw", 3)
+# Day11.solve1("ne,ne,ne", 3)
+# Day11.solve1("ne,ne,sw,sw", 0)
+# Day11.solve1("ne,ne,s,s", 2)
+# Day11.solve1("se,sw,se,sw,sw", 3)
 
 # data.()
 # |> Day11.solve2()
