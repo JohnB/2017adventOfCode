@@ -54,7 +54,7 @@ defmodule Day10 do
   def reverse(%{list: list, pos: pos, skip: skip}, len) do
     list_len = Enum.count(list)
     num_swaps = floor(len / 2)
-    IO.inspect([list, num_swaps], label: "start")
+    # IO.inspect([list, num_swaps], label: "start")
     updated = Enum.reduce(0..num_swaps, list, fn index, acc ->
       near_end = rem(pos + index, list_len)
       far_end = rem(pos + len - index - 1, list_len)
@@ -64,13 +64,13 @@ defmodule Day10 do
       |> Map.put(near_end, list[far_end])
       |> Map.put(far_end, near_value)
     end)
-    |> IO.inspect()
+    # |> IO.inspect()
 
     %{list: updated, pos: rem(pos + len + skip, list_len), skip: skip + 1}
   end
-  
-  def solve1(text) do
-    lengths = AOC.as_comma_separated_integers(text)
+
+  def init(lengths) do
+    # lengths = AOC.as_comma_separated_integers(text)
     # our circular list will go 0..list_end
     # this just sizes correctly for test vs prod
     list_end = (Enum.count(lengths) == 4) && 4 || 255
@@ -80,7 +80,12 @@ defmodule Day10 do
       |> Enum.reduce(%{}, fn entry, acc ->
         Map.put(acc, entry, entry)
       end)
-    accumulator = %{list: list, pos: 0, skip: 0}
+    %{list: list, pos: 0, skip: 0}
+  end
+  
+  def solve1(text) do
+    lengths = AOC.as_comma_separated_integers(text)
+    accumulator = init(lengths)
 
     # apply process
     %{list: list2} = Enum.reduce(lengths, accumulator, fn len, acc ->
@@ -90,21 +95,50 @@ defmodule Day10 do
     list2[0] * list2[1]
   end
 
-  # def solve2(text) do
-  # end
+  def solve2(text) do
+    IO.inspect(text)
+    lengths = String.to_charlist(text)
+    lengths = lengths ++ [17, 31, 73, 47, 23]
+    # lengths = [17, 31, 73, 47, 23]
+    |> AOC.inspect(label: "lengths")
+    accumulator = init(lengths)
+    # {accumulator, lengths} = init(text)
+
+    blech = Enum.reduce(1..64, accumulator, fn _round, acc0 ->
+      # IO.inspect(acc0, label: "round #{round}")
+      Enum.reduce(lengths, acc0, fn len, acc ->
+        reverse(acc, len)
+      end)      
+    end)
+
+    # Force the order - don't use Map.values
+    Enum.map(0..255, fn index -> blech.list[index] end)
+    |> Enum.chunk_every(16)
+    |> IO.inspect()
+    |> Enum.map(fn sparse ->
+      sparse
+      |> Enum.reduce(0, fn element, acc -> Bitwise.bxor(element, acc) end)
+      |> Integer.to_string(16)
+      |> String.pad_leading(2, "0")
+    end)
+    |> Enum.join()
+    |> String.downcase()
+  end
 end
 
 # Example:
 
-IO.inspect(Time.utc_now())
-data.()
-|> Day10.solve1()
-|> IO.inspect(label: "\n*** Part 1 solution (example: 12)")
-#
-
+# IO.inspect(Time.utc_now())
 # data.()
-# |> Day10.solve2()
-# |> IO.inspect(label: "\n*** Part 2 solution (example: )")
-# 
+# |> Day10.solve1()
+# |> IO.inspect(label: "\n*** Part 1 solution (example: 12)")
+# 826
+
+data.()
+|> Day10.solve2()
+|> IO.inspect(label: "\n*** Part 2 solution (example: )")
+# wrong: d067d3f14d7e09c2e738c392665c4
+#.       d067d3f14d07e09c2e7308c3926605c4
+
 
 ```
